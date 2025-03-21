@@ -1,29 +1,30 @@
-import { Get, Injectable, Res } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as Twilio from 'twilio';
-import { Response } from 'express';
+// src/twilio/twilio.service.ts
+import { Injectable } from '@nestjs/common';
+import { Twilio } from 'twilio';
 
 @Injectable()
 export class TwilioService {
-  private client: Twilio.Twilio;
+  private client: Twilio;
 
-  constructor(private configService: ConfigService) {
-    this.client = Twilio(
-      this.configService.get<string>('TWILIO_ACCOUNT_SID'),
-      this.configService.get<string>('TWILIO_AUTH_TOKEN'),
+  constructor() {
+    this.client = new Twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN,
     );
   }
 
-  async createCall(to: string) {
-    const call = await this.client.calls.create({
-      from: this.configService.get<string>('TWILIO_PHONE_NUMBER') || "+12695576450",
-      to,
-      // twiml: "<Response><Say>Ahoy, World!</Say></Response>",
-      url: 'https://c8ba-103-250-137-144.ngrok-free.app/twilio/voice-response', // Custom TwiML URL
-      record: true,
+  async initiateWebRTCCall(to:string) {
+    return this.client.calls.create({
+      url: `https://cac8-223-182-181-68.ngrok-free.app/twilio/voice-response`,
+      from: process.env.TWILIO_PHONE_NUMBER || '',
+      to: to, // Call itself for WebRTC session
     });
+  }
 
-    console.log(call.sid);
-    return { callSid: call.sid };
+  // src/twilio/twilio.service.ts
+  async sendAudioToTwilio(callSid: string, audioBuffer: Buffer) {
+    await this.client.calls(callSid).update({
+      twiml: `<Response><Play>${audioBuffer.toString('base64')}</Play></Response>`,
+    });
   }
 }

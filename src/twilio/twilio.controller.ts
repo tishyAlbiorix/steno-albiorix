@@ -1,35 +1,41 @@
-import { Controller, Post, Body, Get, Res, Req } from '@nestjs/common';
-import { Response } from 'express';
+// src/twilio/twilio.controller.ts
+import { All, Controller, Headers, Post, Req, Res } from '@nestjs/common';
 import { TwilioService } from './twilio.service';
+import { Response } from 'express';
+import * as Twilio from 'twilio';
 
 @Controller('twilio')
 export class TwilioController {
-  constructor(private readonly twilioService: TwilioService) { }
+  constructor(private readonly twilioService: TwilioService) {}
 
   @Post('call')
-  async makeCall(@Body() body: { to: string; message: string }) {
-    return this.twilioService.createCall(body.to);
+  async makeCall() {
+    console.log('in call');
+    return this.twilioService.initiateWebRTCCall('+917874930511');
   }
-
-  @Post('transcription')
-  handleTranscription(@Body() body: any) {
-    console.log('Transcription Received:', body);
-    return { message: 'Transcription received', data: body };
-  }
-
-  @Get('voice-response')
-  @Post('voice-response')
+  @All('voice-response')
   voiceResponse(@Req() req: Request, @Res() res: Response) {
     console.log(`Received ${req.method} request at /twilio/voice-response`);
-    const twiml = `
-      <Response>
-        <Say> Hello! This call will be recorded for transcription. Please speak after the beep.</Say>
-        <Record maxLength="30" transcribe="true" transcribeCallback="https://c8ba-103-250-137-144.ngrok-free.app/twilio/transcription"/>
-        <Say>Thank you. Goodbye!</Say>
-      </Response>
-    `;
-
-    res.setHeader('Content-Type', 'application/xml');
-    res.status(200).send(twiml);
+    const twiml = new Twilio.twiml.VoiceResponse();
+    twiml.say('Hello! This call will be recorded for transcription. Please speak after the beep.');
+    
+    const connect = twiml.connect();
+    console.log('connect', connect);
+    
+    connect.stream({
+      url: 'wss://cac8-223-182-181-68.ngrok-free.app/audio' 
+    });
+    console.log("After stream connect");
+    
+    res.type('text/xml');
+    // res.setHeader('Content-Type', 'application/xml');
+    res.status(200).send(twiml.toString());
   }
+  @Post('voice')
+  async handleVoice(@Res() res: Response) {
+    console.log('in voice');
+    const twiml = new Twilio.twiml.VoiceResponse();
+    twiml.connect().stream({ url: 'wss://localhost:3000/websocket' });
+    res.type('text/xml').send(twiml.toString());
+  }  
 }
