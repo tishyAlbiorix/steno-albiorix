@@ -13,9 +13,9 @@ export class TwilioService {
     );
   }
 
-  async initiateWebRTCCall(to:string) {
+  async initiateWebRTCCall(to: string) {
     return this.client.calls.create({
-      url: `https://cac8-223-182-181-68.ngrok-free.app/twilio/voice-response`,
+      url: `${process.env.BACKEND_URL}/twilio/voice-response`,
       from: process.env.TWILIO_PHONE_NUMBER || '',
       to: to, // Call itself for WebRTC session
     });
